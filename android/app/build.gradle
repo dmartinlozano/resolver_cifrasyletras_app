@@ -1,0 +1,78 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+task readPubspecProperties() {
+    def pubspecYaml = new File(project.rootDir, '../pubspec.yaml')
+    def versionNameMatch = pubspecYaml.text =~ /version: (.+)/
+    if (versionNameMatch) {
+        def versionNameString = versionNameMatch[0][1]
+        def versionNameParts = versionNameString.split("\\+")
+        if (versionNameParts.length == 2) {
+            project.ext.set("flutterVersionName", versionNameParts[0])
+            project.ext.set("flutterVersionCode", versionNameParts[1].toInteger())
+        }
+    }
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('keystore.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+android {
+
+    preBuild.dependsOn readPubspecProperties
+
+    namespace "com.dmlv.resolver_cifrasyletras"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        applicationId "com.dmlv.resolver_cifrasyletras"
+        minSdkVersion 21
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        ndk.abiFilters 'armeabi-v7a','arm64-v8a','x86_64'
+    }
+
+    signingConfigs {
+        release {
+            keyAlias localProperties['keyAlias']
+            keyPassword localProperties['keyPassword']
+            storeFile file(localProperties['storeFile'])
+            storePassword localProperties['storePassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {}
