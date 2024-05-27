@@ -36,6 +36,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late Set<String> validWords;
   List<String> resultWords = [];
   List<String> resultNumbers = [];
+  bool _isLoading = false;
 
   final TextEditingController _lettersController = TextEditingController();
   final TextEditingController _inputNumberController = TextEditingController();
@@ -76,23 +77,41 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    resultWords = [];
+                  });
                   String text = _lettersController.text;
                   if (text.length > 4 && text.length <= 9){
-                    List<String> allWords = findAllWords(
-                      validWords,
-                      _lettersController.text
-                            .replaceAll(RegExp(r'[^a-zA-Z ]'), '')
-                            .toLowerCase()
-                            .split(''));
-                    setState(() {
-                      resultWords = sortAndFilterWords(allWords);
-                      if (resultWords.isEmpty){
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('No se puede obtener ninguna palabra de longitud superior a 4'),
-                        ));
-                      }
-                    });
+                    try{
+                      List<String> allWords = findAllWords(
+                        validWords,
+                        _lettersController.text
+                              .replaceAll(RegExp(r'[^a-zA-Z ]'), '')
+                              .toLowerCase()
+                              .split(''),
+                        timeOut);
+                      setState(() {
+                        _isLoading = false;
+                        resultWords = sortAndFilterWords(allWords);
+                        if (resultWords.isEmpty){
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('No se puede obtener ninguna palabra de longitud superior a 4'),
+                          ));
+                        }
+                      });
+                    }catch (error) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('No se ha podido encontrar ninguna palabra pasados 40 segundos.'),
+                      ));
+                    }
                   }else{
+                    setState(() {
+                      _isLoading = false;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('La longitud del texto ha de ser mayor de 4 y menor de 10'),
                     ));
@@ -101,17 +120,22 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 child: const Text('Procesar'),
               ),
-              if (resultWords.isNotEmpty)
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: resultWords.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        title: Text(resultWords[index]),
-                      );
-                    },
-                  ),
-                ),
+              _isLoading
+              ?  const Center(
+                  child: CircularProgressIndicator(),
+                )
+              : (resultWords.isNotEmpty)
+                ? Expanded(
+                    child: ListView.builder(
+                      itemCount: resultWords.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(resultWords[index]),
+                        );
+                      },
+                    ),
+                )
+                : Container(),
             ],
           )
         )
@@ -120,7 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
         elevation: 4,
         margin: const EdgeInsets.all(10),
         child: Padding(
-            padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
@@ -128,8 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     width: 300,
                     child: TextField(
                       controller: _inputNumberController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: false),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: false),
                       inputFormatters: <TextInputFormatter>[
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
                       ],
@@ -157,38 +180,65 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 16),
                   OutlinedButton(
                     onPressed: () {
-                      NumbersResult result = findClosestResult(
-                        _inputNumberController.text.trim().split(' ')
-                          .where((s) => int.tryParse(s) != null)
-                          .map((s) => int.parse(s))
-                          .toList(),
-                        int.parse(_expectedNumberController.text.trim().replaceAll(RegExp(r'[^0-9]'), ''))
-                      );
                       setState(() {
-                        if (result.result == null){
-                          resultNumbers = [];
+                        _isLoading = true;
+                        resultNumbers = [];
+                      });
+                      try{
+                        List<int> numberString = _inputNumberController.text.trim().split(' ')
+                            .where((s) => int.tryParse(s) != null)
+                            .map((s) => int.parse(s))
+                            .toList();
+                        if (numberString.length != 6){
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('No se puede obtener ningún número'),
+                            content: Text('Por favor, introduzca 6 números separados por espacio'),
                           ));
                         }else{
-                          resultNumbers = [result.result.toString(), ...result.operations ?? []];
+                          NumbersResult result = findClosestResult(
+                            numberString,
+                            int.parse(_expectedNumberController.text.trim().replaceAll(RegExp(r'[^0-9]'), '')),
+                            timeOut
+                          );
+                          setState(() {
+                            _isLoading = false;
+                            if (result.result == null){
+                              resultNumbers = [];
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                content: Text('No se puede obtener ningún número'),
+                              ));
+                            }else{
+                              resultNumbers = [result.result.toString(), ...result.operations ?? []];
+                            }
+                          });
                         }
-                      });
+                      }catch (error) {
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('No se ha podido encontrar ningún numero pasados 40 segundos.'),
+                        ));
+                      }
                     },
                     child: const Text('Procesar'),
                   ),
-                  if (resultNumbers.isNotEmpty)
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: resultNumbers.length,
-                      itemBuilder: (context, index) {
-                        Color textColor = index == 0 ? Colors.red : Colors.black;
-                        return ListTile(
-                          title: Text(resultNumbers[index], style: TextStyle(color: textColor))
-                        );
-                      },
-                    ),
-                  ),
+                  _isLoading
+                  ?  const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : (resultNumbers.isNotEmpty)
+                    ? Expanded(
+                      child: ListView.builder(
+                        itemCount: resultNumbers.length,
+                        itemBuilder: (context, index) {
+                          Color textColor = index == 0 ? Colors.red : Colors.black;
+                          return ListTile(
+                            title: Text(resultNumbers[index], style: TextStyle(color: textColor))
+                          );
+                        },
+                      ),
+                    )
+                    : Container(),
                 ],
               )))
     ]);

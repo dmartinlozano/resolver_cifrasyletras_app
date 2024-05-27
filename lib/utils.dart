@@ -1,3 +1,8 @@
+
+import 'dart:async';
+
+const Duration timeOut = Duration(seconds: 40);
+
 class NumbersResult{
   int? result;
   List<String>? operations = [];
@@ -5,9 +10,14 @@ class NumbersResult{
 }
 
 
-List<String> findAllWords(Set<String> validWords, List<String> possibleLetters) {
+List<String> findAllWords(Set<String> validWords, List<String> possibleLetters, Duration timeout) {
   List<String> results = [];
+  bool stop = false;
+  Timer(timeout, () {
+    stop = true;
+  });
   void lettersBacktrack(String currentWord, List<String> remainingLetters) {
+    if (stop) throw Exception("Function timed out");
     if (currentWord.length > 4 && validWords.contains(currentWord)) {
       results.add(currentWord);
     }
@@ -31,12 +41,18 @@ List<String> sortAndFilterWords(List<String> words) {
   return filteredAndSortedWords.take(20).toList();
 }
 
-NumbersResult findClosestResult(List<int> numbers, int target) {
+NumbersResult findClosestResult(List<int> numbers, int target, Duration timeout) {
   int? closestResult;
   int closestDifference = 2147483647;
   List<String> bestOperations = [];
+  bool stop = false;
+  Timer(timeout, () {
+    stop = true;
+  });
 
   void backtrack(int currentValue, List<int> remainingNumbers, List<String> operations) {
+
+    if (stop) throw Exception("Function timed out");
     int currentDifference = (target - currentValue).abs();
 
     if (currentDifference < closestDifference) {
