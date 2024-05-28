@@ -41,24 +41,24 @@ List<String> sortAndFilterWords(List<String> words) {
   return filteredAndSortedWords.take(20).toList();
 }
 
-NumbersResult findClosestResult(List<int> numbers, int target, Duration timeout) {
-  int? closestResult;
+List<NumbersResult> findClosestResults(List<int> numbers, int target, Duration timeout) {
   int closestDifference = 2147483647;
-  List<String> bestOperations = [];
+  List<NumbersResult> allClosestResults = [];
   bool stop = false;
   Timer(timeout, () {
     stop = true;
   });
 
   void backtrack(int currentValue, List<int> remainingNumbers, List<String> operations) {
-
     if (stop) throw Exception("Function timed out");
     int currentDifference = (target - currentValue).abs();
 
     if (currentDifference < closestDifference) {
       closestDifference = currentDifference;
-      closestResult = currentValue;
-      bestOperations = List.from(operations);
+      allClosestResults.clear();
+      allClosestResults.add(NumbersResult(result: currentValue, operations: List.from(operations)));
+    } else if (currentDifference == closestDifference) {
+      allClosestResults.add(NumbersResult(result: currentValue, operations: List.from(operations)));
     }
 
     if (remainingNumbers.isEmpty) {
@@ -90,8 +90,5 @@ NumbersResult findClosestResult(List<int> numbers, int target, Duration timeout)
     backtrack(numbers[i], remainingNumbers, []);
   }
 
-  return NumbersResult(
-    result: closestResult,
-    operations: bestOperations
-  );
+  return allClosestResults;
 }

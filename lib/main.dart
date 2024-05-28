@@ -190,24 +190,26 @@ class _MyHomePageState extends State<MyHomePage> {
                             .map((s) => int.parse(s))
                             .toList();
                         if (numberString.length != 6){
+                          _isLoading = false;
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text('Por favor, introduzca 6 números separados por espacio'),
                           ));
                         }else{
-                          NumbersResult result = findClosestResult(
+                          List<NumbersResult> result = findClosestResults(
                             numberString,
                             int.parse(_expectedNumberController.text.trim().replaceAll(RegExp(r'[^0-9]'), '')),
                             timeOut
                           );
                           setState(() {
                             _isLoading = false;
-                            if (result.result == null){
+                            if (result.isEmpty){
                               resultNumbers = [];
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                                 content: Text('No se puede obtener ningún número'),
                               ));
                             }else{
-                              resultNumbers = [result.result.toString(), ...result.operations ?? []];
+                              NumbersResult shortestResult = result.reduce((curr, next) => curr.operations!.length <= next.operations!.length ? curr : next);
+                              resultNumbers = [shortestResult.result.toString(), ...shortestResult.operations ?? []];
                             }
                           });
                         }
